@@ -1,0 +1,11 @@
+previous_error = error
+            error = sensorReading[1]-sensorReading[3]
+            d = error - previous_error
+            Krp = -1.2
+            Klp = 4
+            Krd = 0
+            Kld = -4
+            Lp = 1
+            Ld = 0.1
+            velocity = Krp*(error)
+            linear_velocity = Klp*(Lp-math.abs(error)) + Kld*(math.abs(d))
