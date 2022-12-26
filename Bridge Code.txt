@@ -1,0 +1,114 @@
+function sysCall_init()
+    corout=coroutine.create(coroutineMain)
+end
+
+function sysCall_actuation()
+    if coroutine.status(corout)~='dead' then
+        local ok,errorMsg=coroutine.resume(corout)
+        if errorMsg then
+            error(debug.traceback(corout,errorMsg),2)
+        end
+    end
+end
+
+function sysCall_cleanup()
+    -- do some clean-up here
+end
+
+
+function coroutineMain()
+    -- Put some initialization code here
+    motor_RW = sim.getObject('/DeliveryBikeChassis/ReactionWheelMotor')
+    chassis = sim.getObject('/DeliveryBikeChassis')
+    RWheel = sim.getObject('/DeliveryBikeChassis/ReactionWheelMotor/ReactionWheel')
+    Floor = sim.getObject('/Floor')
+    ref = sim.getObject('/DeliveryBikeChassis/Reference')
+    ref_plane = sim.getObject('/DeliveryBikeChassis/Ref_Plane[0]')
+    ref_plane_1 = sim.getObject('/DeliveryBikeChassis/Ref_Plane[1]')
+    leftSensor = sim.getObject('/DeliveryBikeChassis/LeftSensor')
+    middleSensor = sim.getObject('/DeliveryBikeChassis/MiddleSensor')
+    rightSensor = sim.getObject('/DeliveryBikeChassis/RightSensor')
+    handlemotor = sim.getObject('/DeliveryBikeChassis/HandleMotor')
+    rearmotor = sim.getObject('/DeliveryBikeChassis/RearMotor')
+    velocity=0
+    linear_velocity= 0
+    error = 0
+    previous_error = 0
+    wheelRadius=0.027
+    interWheelDistance=0.119
+    sim.setThreadSwitchTiming(99)
+    -- Put your main loop here, e.g.:
+    theta_r = 2*math.pi
+    theta_dot_r = 0
+    alpha_r = 0
+    alpha_dot_r = 0
+    Krp = -8
+    Krd = 0
+    Kri = 0
+    Klp = -0.3
+    Kld =0
+    Kli =0
+    Mv = 4
+    Ka = 122.5
+    while true do
+            a = sim.getObjectOrientation(ref,ref_plane)
+            alpha = a[2]
+            b,c = sim.getObjectVelocity(ref)
+            alpha_dot = c[2]
+            f = sim.getObjectOrientation(ref_plane,Floor)
+            f_1 = sim.getObjectOrientation(ref_plane_1,Floor)
+            z = f[3]
+            sim.setObjectOrientation(ref_plane,Floor,{0,0,z})
+            t = sim.getObjectOrientation(RWheel, ref)
+            theta = t[3]
+            d,e = sim.getObjectVelocity(RWheel)
+            theta_dot = e[3]
+            u = -235.80477*(alpha-alpha_r)-64.69789*(alpha_dot-alpha_dot_r)+0.31623*(theta-theta_r)+1.77652*(theta_dot-theta_dot_r)
+            
+            sim.setJointTargetVelocity(motor_RW, u)
+            
+            
+            sensorReading={}
+            sensorReading[1]=(sim.readVisionSensor(leftSensor))
+            sensorReading[2]=(sim.readVisionSensor(middleSensor))
+            sensorReading[3]=(sim.readVisionSensor(rightSensor))
+            --sensorReading[4]=(sim.readVisionSensor(FrontSensor))
+            angle = -f_1[1]
+            previous_error = error
+            error = sensorReading[1]-sensorReading[3]
+            d = error - previous_error
+            i = error + previous_error
+            --[[if(sensorReading[4] == 0) then
+                Mv = 12
+                velocity = Krp*(error) + Krd*d + Kri*i
+                linear_velocity = math.max(Mv + Klp*(math.abs(error))+Ka*angle, 7)
+            end--]]
+            if(angle > 0.35 or angle < -0.01) then
+                Ka = 112
+                Mv = Mv+0.05
+                if(Mv > 12) then
+                    Mv = 12
+                end
+                print(Mv)
+                linear_velocity = Mv + Klp*(math.abs(error))+Ka*angle
+                velocity = Krp*(error) + Krd*d + Kri*i
+            else
+                Mv = 4
+                velocity = Krp*(error) + Krd*d + Kri*i
+                linear_velocity = Mv + Klp*(math.abs(error))
+            end
+            --print(angle)
+            sim.setJointTargetVelocity(rearmotor,linear_velocity)
+            
+            sim.setJointTargetVelocity(handlemotor,velocity)
+
+            sim.switchThread()
+    --     local p=sim.getObjectPosition(objHandle,-1)
+    --     p[1]=p[1]+0.001
+    --     sim.setObjectPosition(objHandle,-1,p)
+    --     sim.switchThread() -- resume in next simulation step
+    -- end
+end
+
+-- See the user manual or the available code snippets for additional callback functions and details
+end
