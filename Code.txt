@@ -1,3 +1,4 @@
+
 function sysCall_init()
     corout=coroutine.create(coroutineMain)
 end
@@ -97,7 +98,7 @@ function coroutineMain()
     
     state = 0
     previous_state = 0
-    cc = 0
+    cc = 1
     while true do
             a = sim.getObjectOrientation(ref,ref_plane)
             alpha = a[2]
@@ -127,15 +128,21 @@ function coroutineMain()
             
             angle = -f_1[1]
             acc = (9.8/0.15)*math.sin(angle)
-            print(cc)
+            
+            --State List
+            --State 0 - Normal PID
+            --State 1 - Blue Checkpoint
+            --State 2 - Extra Right Turn
+            
             --State Entries
             if(blue1==1 and blue5==1 and red5<0.1 and red1<0.1) then
             state = 1
             end
             
             --State Stuff
-                  
-            if(state==0 and cc==1 and angle>0.1) then
+            if(state==0 and cc==2 and blue3<0.1 and blue4<0.1 and blue5<0.1) then
+            state = 2
+            elseif(state==0 and cc==1 and angle>0.1) then
             acc = (9.8/0.15)*math.sin(angle)
             Mv = Mv + 0.04*acc 
             Mv = math.min(Mv,120)
@@ -220,7 +227,9 @@ function coroutineMain()
             Mv=math.max(4,Mv-5)
             end
             
-            
+            if(state==2) then
+            velocity = -6
+            end
             --State Exits
             if(state==1 and red5==1) then
             state = 0
@@ -229,8 +238,8 @@ function coroutineMain()
             cc=cc+1
             end
             
-            if(blue3<0.1 and blue4<0.1 and blue5<0.1) then
-                velocity=-6
+            if(state==2 and (blue3>=0.1 or blue4>=0.1 or blue5>=0.1)) then
+                state = 0
             end
             
             
