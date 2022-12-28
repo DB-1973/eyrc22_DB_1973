@@ -1,0 +1,7 @@
+if(angle>0.1)then
+                Mv = Mv + 0.04*acc 
+                Mv = math.min(Mv,120)
+            else
+            print("sup")
+            Mv=math.max(4,Mv-6)
+            end
