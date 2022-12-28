@@ -1,7 +1,249 @@
-if(angle>0.1)then
-                Mv = Mv + 0.04*acc 
-                Mv = math.min(Mv,120)
-            else
-            print("sup")
-            Mv=math.max(4,Mv-6)
+function sysCall_init()
+    corout=coroutine.create(coroutineMain)
+end
+
+function sysCall_actuation()
+    if coroutine.status(corout)~='dead' then
+        local ok,errorMsg=coroutine.resume(corout)
+        if errorMsg then
+            error(debug.traceback(corout,errorMsg),2)
+        end
+    end
+end
+
+function sysCall_cleanup()
+    -- do some clean-up here
+end
+red1=0
+red2=0
+green1=0
+green2=0
+
+blue1=0
+blue2=0
+blue3=0
+blue4=0
+blue5=0
+data1={}
+
+function sysCall_sensing()
+    -- put your sensing code here
+    result,data_right_1=sim.readVisionSensor(rightSensor)
+    result,data_right_2=sim.readVisionSensor(rightSensor_2)
+    result,data_left_1=sim.readVisionSensor(leftSensor)
+    result,data_left_2=sim.readVisionSensor(leftSensor_2)
+    result,data_mid=sim.readVisionSensor(middleSensor)
+    blue1 = data_left_2[9]
+    blue2 = data_left_1[9]
+    blue3 = data_mid[9]
+    blue4 = data_right_1[9]
+    blue5 = data_right_2[9]
+    
+    red1 = data_left_2[12]
+    red2 = data_left_1[12]
+    red3 = data_mid[12]
+    red4 = data_right_1[12]
+    red5 = data_right_2[12]
+    
+    green1 = data_left_2[13]
+    green2 = data_left_1[13]
+    green3 = data_mid[13]
+    green4 = data_right_1[13]
+    green5 = data_right_2[13]
+    
+    --print(result)
+    -- if (data_left ~= nil) then
+    --print('minimum:intensity,r,g,b,depth'..data_left[1]..' '..data_left[2] ..' '..data_left[3] ..' '..data_left[4] ..' '..data_left[5] )
+    --print('maximum:intensity,r,g,b,depth'..data_left[6]..' '..data_left[7] ..' '..data_left[8] ..' '..data_left[9] ..' '..data_left[10] )
+    --print('left:average:intensity,r,g,b,depth'..data_left[11]..' '..data_left[12] ..' '..data_left[13] ..' '..data_left[14] ..' '..data_left[15] )
+    --print('right:average:intensity,r,g,b,depth'..data_right[11]..' '..data_right[12] ..' '..data_right[13] ..' '..data_right[14] ..' '..data_right[15] )
+    --print(' ')
+    --end
+end
+
+function coroutineMain()
+    -- Put some initialization code here
+    motor_RW = sim.getObject('/DeliveryBikeChassis/ReactionWheelMotor')
+    chassis = sim.getObject('/DeliveryBikeChassis')
+    RWheel = sim.getObject('/DeliveryBikeChassis/ReactionWheelMotor/ReactionWheel')
+    Floor = sim.getObject('/Floor')
+    ref = sim.getObject('/DeliveryBikeChassis/Reference')
+    ref_plane = sim.getObject('/DeliveryBikeChassis/Ref_Plane[0]')
+    ref_plane_1 = sim.getObject('/DeliveryBikeChassis/Ref_Plane[1]')
+    
+    leftSensor = sim.getObject('/DeliveryBikeChassis/LeftSensor_1')
+    leftSensor_2 = sim.getObject('/DeliveryBikeChassis/LeftSensor_2')
+    middleSensor = sim.getObject('/DeliveryBikeChassis/MiddleSensor')
+    rightSensor = sim.getObject('/DeliveryBikeChassis/RightSensor_1')
+    rightSensor_2 = sim.getObject('/DeliveryBikeChassis/RightSensor_2')
+    
+    handlemotor = sim.getObject('/DeliveryBikeChassis/HandleMotor')
+    rearmotor = sim.getObject('/DeliveryBikeChassis/RearMotor')
+    velocity=0
+    linear_velocity= 0
+    Mv=0
+    error = 0
+    n = 0
+    d = 0
+    previous_error = 0
+    wheelRadius=0.027
+    interWheelDistance=0.119
+    sim.setThreadSwitchTiming(99)
+    -- Put your main loop here, e.g.:
+    theta_r = 2*math.pi
+    theta_dot_r = 0
+    alpha_r = 0
+    alpha_dot_r = 0
+    
+    state = 0
+    previous_state = 0
+    cc = 0
+    while true do
+            a = sim.getObjectOrientation(ref,ref_plane)
+            alpha = a[2]
+            b,c = sim.getObjectVelocity(ref)
+            alpha_dot = c[2]
+            f = sim.getObjectOrientation(ref_plane,Floor)
+            f_1 = sim.getObjectOrientation(ref_plane_1, Floor)
+            
+            z = f[3]
+            sim.setObjectOrientation(ref_plane,Floor,{0,0,z})
+            t = sim.getObjectOrientation(RWheel, ref)
+            theta = t[3]
+            d,e = sim.getObjectVelocity(RWheel)
+            theta_dot = e[3]
+            u = -235.80477*(alpha-alpha_r)-64.69789*(alpha_dot-alpha_dot_r)+0.31623*(theta-theta_r)+1.77652*(theta_dot-theta_dot_r)
+            
+            sim.setJointTargetVelocity(motor_RW, u)
+            
+            
+            sensorReading={}
+            sensorReading[1]=(sim.readVisionSensor(leftSensor_2))
+            sensorReading[2]=(sim.readVisionSensor(leftSensor))
+            sensorReading[3]=(sim.readVisionSensor(middleSensor))
+            sensorReading[4]=(sim.readVisionSensor(rightSensor))
+            sensorReading[5]=(sim.readVisionSensor(rightSensor_2))
+            previous_state = state
+            
+            angle = -f_1[1]
+            acc = (9.8/0.15)*math.sin(angle)
+            print(cc)
+            --State Entries
+            if(blue1==1 and blue5==1 and red5<0.1 and red1<0.1) then
+            state = 1
             end
+            
+            --State Stuff
+                  
+            if(state==0 and cc==1 and angle>0.1) then
+            acc = (9.8/0.15)*math.sin(angle)
+            Mv = Mv + 0.04*acc 
+            Mv = math.min(Mv,120)
+            previous_error = error
+            n = 2*blue1+blue2-blue4-2*blue5
+            d = (blue1+blue2+blue3+blue4+blue5)
+            error = n/d
+            
+            d = error - previous_error
+            i = error + previous_error
+            Krp = -8
+            Krd = -2
+            Kri = 0
+            Klp = -6
+            Kld =1
+            Kli =1
+            velocity = Krp*(error) + Krd*d + Kri*i
+            linear_velocity = Mv + Klp*(math.abs(error)) + Krd*(math.abs(error))+Kli*(math.abs(i))
+            linear_velocity = math.max(0,linear_velocity)
+            print("On Bridge 1")
+            
+            elseif(state==0 and cc==1) then
+            Mv=math.max(4,Mv-6)
+            previous_error = error
+            n = 2*blue1+blue2-blue4-2*blue5
+            d = (blue1+blue2+blue3+blue4+blue5)
+            error = n/d
+            
+            d = error - previous_error
+            i = error + previous_error
+            Krp = -8
+            Krd = -2
+            Kri = 0
+            Klp = -6
+            Kld =1
+            Kli =1
+            velocity = Krp*(error) + Krd*d + Kri*i
+            linear_velocity = Mv + Klp*(math.abs(error)) + Krd*(math.abs(error))+Kli*(math.abs(i))
+            linear_velocity = math.max(0,linear_velocity)
+            print("After Checkpoint One")
+            
+            elseif(state==0) then
+            Mv=4
+            previous_error = error
+            n = 2*blue1+blue2-blue4-2*blue5
+            d = (blue1+blue2+blue3+blue4+blue5)
+            error = n/d
+            
+            d = error - previous_error
+            i = error + previous_error
+            Krp = -8
+            Krd = -2
+            Kri = 0
+            Klp = -6
+            Kld =1
+            Kli =1
+            velocity = Krp*(error) + Krd*d + Kri*i
+            linear_velocity = Mv + Klp*(math.abs(error)) + Krd*(math.abs(error))+Kli*(math.abs(i))
+            linear_velocity = math.max(0,linear_velocity)
+            print("State 0")
+            end
+            
+            
+            
+            if(state==1) then
+            previous_error = error
+            n = 2*blue1+blue2-blue4-2*blue5
+            d = (blue1+blue2+blue3+blue4+blue5)
+            error = n/d
+            
+            d = error - previous_error
+            i = error + previous_error
+            Krp = -8
+            Krd = -2
+            Kri = 0
+            Klp = -6
+            Kld =1
+            Kli =1
+            velocity = Krp*(error) + Krd*d + Kri*i
+            linear_velocity = Mv + Klp*(math.abs(error)) + Krd*(math.abs(error))+Kli*(math.abs(i))
+            linear_velocity = math.max(0,linear_velocity)
+            Mv=math.max(4,Mv-5)
+            end
+            
+            
+            --State Exits
+            if(state==1 and red5==1) then
+            state = 0
+            end
+            if(state==1 and previous_state~=1) then
+            cc=cc+1
+            end
+            
+            if(blue3<0.1 and blue4<0.1 and blue5<0.1) then
+                velocity=-6
+            end
+            
+            
+            sim.setJointTargetVelocity(rearmotor,linear_velocity)
+            sim.setJointTargetVelocity(handlemotor,velocity)
+
+            sim.switchThread()
+    --     local p=sim.getObjectPosition(objHandle,-1)
+    --     p[1]=p[1]+0.001
+    --     sim.setObjectPosition(objHandle,-1,p)
+    --     sim.switchThread() -- resume in next simulation step
+    -- end
+end
+
+-- See the user manual or the available code snippets for additional callback functions and details
+end
