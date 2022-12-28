@@ -1,0 +1,10 @@
+angle = f_1[1]
+            acc = (9.8/0.15)*math.sin(angle)
+            
+            if(angle>0.01)then
+                Mv = Mv + 0.05*acc 
+                Mv = math.min(Mv,20)
+            else
+            print("sup")
+            Mv=math.max(4,Mv-5)
+            end
