@@ -4,9 +4,6 @@ MPU6050 mpu(Wire);
 //PID
 #include <PID_v1.h>
 
-int sensorValue =0;
-int joyX = 27;
-
 float velocity;
 float accum;
 
@@ -33,8 +30,6 @@ void setup()
   Serial.begin(9600);
   Wire.begin();
   
-  pinMode(joyX, INPUT);
-  
   byte status = mpu.begin(); //MPU initialization and calibration
   Serial.print(F("MPU6050 status: "));
   Serial.println(status);
@@ -48,16 +43,13 @@ void setup()
   nidec_motor_init();
   Serial.println("NIDEC initialized\n");
 
-  PID1.SetMode(AUTOMATIC);              
-  PID1.SetOutputLimits(-100, 100);
+  PID1.SetMode(AUTOMATIC);
   PID1.SetSampleTime(10);
 }
 void loop() 
-{ sensorValue = analogRead(joyX);
-  int mapVal = map(sensorValue, 0, 4096,-255,255);
-  //Serial.println(mapVal);
+{ 
   delay(1);
- 
+      // get input from mpu
       mpu.update();
       alpha = mpu.getAngleX();
       alpha_dot = mpu.getGyroX();
@@ -84,6 +76,7 @@ void loop()
   Serial.print(" ");
   Serial.println(velocity);
   
+ //give output velocity
   nidec_motor_control(-velocity);
 }
 
