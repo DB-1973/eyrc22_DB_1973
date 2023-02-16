@@ -1,0 +1,5 @@
+{
+    "sketch": "Task 5/pid/pid.ino",
+    "board": "arduino:avr:uno",
+    "port": "/dev/ttyACM0"
+}
